@@ -15,7 +15,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "soundtracer=cli:main",
+            "soundtracer=run:main",
         ],
     },
     classifiers=[
