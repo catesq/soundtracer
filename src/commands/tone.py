@@ -70,6 +70,7 @@ def parse_tone(tone_str):
 
     return None
 
+
 def matcher(tone, plugin_name):
     """
     Match a tone with a plugin.
@@ -83,6 +84,7 @@ def matcher(tone, plugin_name):
     """
     
     freq = parse_tone(tone)
+    
     if freq is None:
         print(f"Invalid tone: {tone}")
         return
