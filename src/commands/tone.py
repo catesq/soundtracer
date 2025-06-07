@@ -1,33 +1,10 @@
+from plugin import plugin_wrappers, load_chain
 
-import re
-
-note_re = re.compile(r'([A-Ga-g]?)([#b?+-]?)(\d*)')
-freq_re = re.compile(r'(\d+(\.\d+)?)([kK]?)')        
-
-note_offsets = {
-    'C': -9, 'D': -7, 
-    'E': -5, 'F': -4, 'G': -2,
-    'A': 0,  'B': 2
-}
+from commands.input import get_audio, get_midi, get_midi_duration
+from commands.args import parse_note, parse_frequency
 
 
 
-def get_note_offset(note, octave):
-    """
-    Get the note offset relative to A4.
-
-    Args:
-        note (str): The note name, e.g. A, C#, Fb, etc.
-        octave (int): The octave number, default is 4.
-
-    Returns:
-        int: The note offset relative to A4, where A4 is 0.
-    """
-
-    note_offset = note_offsets.get(note, 0)
-    note_offset += (octave - 4) * 12
-
-    return note_offset
 
 
 
@@ -44,49 +21,70 @@ def parse_tone(tone_str):
         float: frequency in hz
     """
 
-    freq_match = freq_re.match(tone_str)
-    if freq_match:
-        freq_value = float(freq_match.group(1))
-        freq_unit = freq_match.group(3)
+    freq_match = parse_frequency(tone_str)
+    if freq_match is not None:
+        return freq_match
         
-        if freq_unit.lower() == 'k':
-            freq_value *= 1000
-        
-        return freq_value
+    # If it doesn't match frequency, try to parse as a note
 
-    note_match = note_re.match(tone_str)
-    if note_match:
-        note = note_match.group(1).upper()
-        octave = int(note_match.group(3) or '4')
-        note_offset = get_note_offset(note, octave)
-
-        accidental = note_match.group(2)
-        if accidental == '#' or accidental == '+':
-            note_offset += 1
-        elif accidental == 'b' or accidental == '-':
-            note_offset -= 1
-
-        return 440.0 * (2 ** (note_offset / 12.0))
-
+    note_match = parse_note(tone_str)
+    if note_match is not None:
+        return note_match
+    
     return None
 
 
-def matcher(tone, plugin_name):
+
+
+
+def matcher(tone, plugin_name, input_desc, qfactor, harmonics, samplerate = 48000, wrap_type=plugin_wrappers.pedalboard):
     """
     Match a tone with a plugin.
 
     Args:
         tone (str): The tone to match, can be a note or frequency.
-        plugin_name (str): The name of the plugin to use for matching.
+        plugin_name (str): The name of the plugin(s) to use for matching.
     
     Returns:
         None
+
+    If the first instrument is an effect: 
+       the input can be a type of noise_type | wave_name:tone | audio_file | midi_file 
+         input = [ white_noise | pink_noise | brown_noise ]
+         input = [ sine | saw | square ] : [midi note | frequency] eg 'input sine:a4' or 'input saw:440'
+
+    If the first instrument is an instrument:  
+       the input is a single midi note or the name of a midi file
     """
     
     freq = parse_tone(tone)
-    
+
     if freq is None:
         print(f"Invalid tone: {tone}")
         return
 
-    print(f"Matching tone '{tone}' ({freq:.2f} Hz) with plugin '{plugin_name}'")
+    chain = load_chain(plugin_name, wrap_type)
+
+    if chain.get_size() == 0:
+        print(f"No plugins found for '{plugin_name}'")
+        return
+    
+    if not chain.first_plugin_is_instrument():
+        midi = get_midi(input_desc)
+
+        if midi is None:
+            print(f"Invalid input for plugin '{plugin_name}': {input_desc}")
+            return
+
+        input_args = {
+            "midi_messages": midi,
+            "duration": get_midi_duration(midi),
+            "samplerate": samplerate
+            
+        }
+    else:
+        input_args = {
+            "input_array": get_audio(input_desc)
+        }
+
+    

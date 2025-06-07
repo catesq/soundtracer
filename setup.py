@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="soundtracer",
+    name="soundtrace",
     version="1.0.0",
     description="A tool for guessing VST3/AU plugin parameters from audio samples",
-    author="Tim Hunt",
+    author="tnhunt",
     author_email="tnhunt@gmail.com",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
@@ -12,10 +12,11 @@ setup(
         "librosa",
         "numpy",
         "pedalboard",
+        "pedalboard-pluginary @ git+https://github.com/catesq/pedalboard-pluginary.git#egg=pedalboard-pluginary",
     ],
     entry_points={
         "console_scripts": [
-            "soundtracer=cli:main",
+            "soundtrace=cli:main",
         ],
     },
     classifiers=[
