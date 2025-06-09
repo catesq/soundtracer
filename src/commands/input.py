@@ -1,9 +1,26 @@
 import os
 import mido
-from commands.args import parse_note, parse_duration, parse_frequency
+from commands.args import parse_note, parse_duration
 from commands.audio import read_audio_file, generate_audio
-    
+from plugin import plugin_chain
 
+class Input:
+    """
+    Class to handle input processing for the plugin.
+    It can process MIDI files, MIDI notes, and audio files.
+    """
+
+    def __init__(self, midi=None, audio=None, samplerate=48000, duration=1):
+        self.midi = midi
+        self.audio = audio
+        self.samplerate = samplerate
+        self.duration = duration
+
+    def get_midi(self):
+        return self.midi
+
+    def get_audio(self, samplerate=48000):
+        return self.audio
 
 
 def is_midi_file(file_path):
@@ -119,3 +136,34 @@ def get_audio(input, samplerate=48000):
         return read_audio_file(input)
     else:
         return generate_audio(input, samplerate)
+
+
+def build_input(input_desc, chain: plugin_chain, samplerate):
+    """
+    Build the input arguments for the plugin based on the input description and chain.
+
+    Args:
+        input_desc (str): The input description, can be a type of noise_type | wave_name:tone | audio_file | midi_file.
+        chain (PluginChain): The plugin chain to use.
+        samplerate (int): The sample rate for the audio processing.
+
+    Returns:
+        dict: The input arguments for the plugin.
+    """
+    
+    if chain.first_plugin_is_instrument():
+        audio = get_audio(input_desc)
+        
+        if audio is None:
+            print(f"Invalid input for plugin '{chain.get_first_plugin_name()}': {input_desc}")
+            return None
+        
+        return input.Input(audio=audio, samplerate=samplerate)
+    else:
+        midi = get_midi(input_desc)
+
+        if midi is None:
+            print(f"Invalid input for plugin '{chain.get_first_plugin_name()}': {input_desc}")
+            return None
+        
+        return input.Input(midi=midi, duration=get_midi_duration(midi), samplerate=samplerate)

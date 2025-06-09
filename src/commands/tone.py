@@ -1,10 +1,7 @@
 from plugin import plugin_wrappers, load_chain
 
-from commands.input import get_audio, get_midi, get_midi_duration
+from commands.input import build_input
 from commands.args import parse_note, parse_frequency
-
-
-
 
 
 
@@ -32,8 +29,6 @@ def parse_tone(tone_str):
         return note_match
     
     return None
-
-
 
 
 
@@ -69,22 +64,11 @@ def matcher(tone, plugin_name, input_desc, qfactor, harmonics, samplerate = 4800
         print(f"No plugins found for '{plugin_name}'")
         return
     
-    if not chain.first_plugin_is_instrument():
-        midi = get_midi(input_desc)
+    # dict with the midi/audio input and samplerate for pedalboard.externalplugin.process()
+    input = build_input(input_desc, chain, samplerate)
 
-        if midi is None:
-            print(f"Invalid input for plugin '{plugin_name}': {input_desc}")
-            return
-
-        input_args = {
-            "midi_messages": midi,
-            "duration": get_midi_duration(midi),
-            "samplerate": samplerate
-            
-        }
-    else:
-        input_args = {
-            "input_array": get_audio(input_desc)
-        }
+    audio_gen = chain.process(input)
+    
+    
 
     
